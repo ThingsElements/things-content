@@ -1,0 +1,114 @@
+<!--
+@license
+Copyright © HatioLab Inc. All rights reserved.
+-->
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../things-content/things-menu-content-behavior.html">
+<link rel="import" href="../things-responsive-iframe/things-responsive-iframe.html">
+<!--
+	데이터 플로우 모델러 - NodeRed
+-->
+
+<dom-module id="things-iframe-menu-content">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+		</style>
+
+		<things-ajax 
+			auto
+			id="resource-meta"
+			method="GET"
+			resource-url="[[menuMetaUrl]]"
+			last-response="{{metaData}}">
+		</things-ajax>
+
+		<things-responsive-iframe
+			id="viewer"
+			resource-url="[[viewerUrl]]">
+		</things-responsive-iframe>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-iframe-menu-content',
+
+            behaviors: [
+				Things.MenuContentBehavior
+			],
+
+			properties: {
+				/**
+				 * IFrame에 viewer를 그리기 위한 URL
+				 */
+				viewerUrl : {
+					type: String
+				},
+
+				/**
+				 * menu 매개변수 셋업에서 설정한 값
+				 */
+				menuParams: {
+					type: Object,
+					value:function(){
+						return new Object();
+					}
+				}
+			},
+
+			observers: [
+				'menuMetaChanged(metaData)'
+			],
+
+			menuMetaChanged: function(metaData){
+				if(metaData && metaData.menu_params){
+					this.set('menuParams',metaData.menu_params);
+				}
+				this.menuParamsChanged(this.menuParams);
+			},
+			/**
+			 * 선택한 매개변수 값이 변경된 경우
+			 *
+			 * @param {Object} menuParams 화면에서 선택한 매개변수 값
+			 */
+			menuParamsChanged: function(menuParams) {
+				this.viewerUrl = this.parseMenuParamAndUrl(this.menuInfo.resource_url,menuParams);
+				this.reloadviewer();
+			},
+
+			parseMenuParamAndUrl: function(resourceUrl,params){
+				if(params){	
+					var url = resourceUrl+'?'
+					var condArr = [];
+					params.forEach(function(obj){
+						var str = '';
+						str = obj.name +'='+obj.value
+						condArr.push(str);
+					})
+					return url + condArr.join('&');
+				}else{
+					return resourceUrl;
+				}
+			},
+
+			/**
+			 * 모델러 IFrame 화면을 Reload한다.
+			 * iframe src만 변경해서는 reload가 되지 않아 dom 자체를 지웠다가 새로 생성한다. 
+			 */
+			reloadviewer: function() {
+				var viewer = Polymer.dom(this.root).querySelector('#viewer');
+				Polymer.dom(this.root).removeChild(viewer);
+
+				viewer = document.createElement('things-responsive-iframe');
+				viewer.setAttribute('id', 'viewer');
+				viewer.setAttribute('resource-url', this.viewerUrl);
+				Polymer.dom(this.root).appendChild(viewer);
+			}
+		})
+	</script>
+</dom-module>
